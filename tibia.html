@@ -977,9 +977,10 @@ function playerDie(){
   setTimeout(()=>el.style.display='none',1800);
   updateUI();
 }
-// Dijkstra em raio limitado. Custo de busca: 1 reto, 3 diagonal — como 2 passos retos
-// custam 2, o monstro só anda na diagonal quando as rotas retas estão bloqueadas
-// (o tempo real do passo diagonal continua 2x; isso é só preferência de rota):
+// Dijkstra em raio limitado, com os custos de rota do Tibia (TFS): 10 reto, 25 diagonal.
+// Dois passos retos (20) ganham de uma diagonal (25), então o monstro anda quase sempre
+// reto e só corta na diagonal quando isso poupa um desvio de 3+ passos ou as rotas retas
+// estão bloqueadas (o tempo real do passo diagonal continua 2x; isso é preferência de rota):
 // devolve o primeiro passo [dx,dy] do caminho mais barato até ficar adjacente
 // (cheb<=1) ao alvo, ou null se não há caminho dentro do raio.
 function findStep(m,tx,ty){
@@ -1001,7 +1002,7 @@ function findStep(m,tx,ty){
         if(nx<ox||ny<oy||nx>=ox+W||ny>=oy+W)continue;
         const diag=dx&&dy;
         if(!canStep(nx,ny)||(diag&&!canDiag(x,y,dx,dy)))continue;
-        const nc=c+(diag?3:1),ni=idx(nx,ny);
+        const nc=c+(diag?25:10),ni=idx(nx,ny);
         if(dist[ni]>=0&&dist[ni]<=nc)continue;
         dist[ni]=nc;
         if(c===0){fstep[ni*2]=dx;fstep[ni*2+1]=dy;}
@@ -1011,6 +1012,18 @@ function findStep(m,tx,ty){
     }
   }
   return null;
+}
+// "dança" do Tibia: monstro em alcance de ataque às vezes troca de tile com um passo
+// ortogonal, mantendo a mesma distância do alvo (como o getDanceStep do TFS)
+function danceStep(m){
+  const d0=cheb(m,player),cands=[];
+  for(let i=0;i<8;i+=2){
+    const [dx,dy]=DIRS8[i],nx=m.x+dx,ny=m.y+dy;
+    if(canStep(nx,ny)&&cheb({x:nx,y:ny},player)===d0)cands.push([nx,ny]);
+  }
+  if(!cands.length)return false;
+  const [nx,ny]=cands[rnd(0,cands.length-1)];
+  moveEnt(m,nx,ny);return true;
 }
 function stepToward(m,tx,ty){
   const s=findStep(m,tx,ty);
@@ -1087,6 +1100,10 @@ function update(){
     const dist=cheb(m,player);
     if(dist<=1&&!pSafe){
       if(NOW-m.lastAtk>=m.def.atkMs)hitPlayer(m);
+      if(NOW>=m.nextThink){ // dança ao redor do alvo sem parar de atacar
+        const danced=Math.random()<0.2&&danceStep(m);
+        m.nextThink=NOW+(danced?m.stepMs:m.moveMs)+Math.random()*120;
+      }
     }else if(NOW>=m.nextThink){
       let moved=false;
       if(dist<=m.def.aggro&&!pSafe)moved=stepToward(m,player.x,player.y);
