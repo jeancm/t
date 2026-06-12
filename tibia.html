@@ -362,7 +362,7 @@ isp('mpot2',P=>{P(7,0,2,2,'#8a5a30');P(6,2,4,2,'#b8c8d8');
   P(3,4,10,10,'#b8c8d8');P(4,6,8,7,'#1830a8');P(4,5,1,7,'#e8f0f8');});
 
 //==================================================================== estado
-const player={x:6,y:6,fx:6,fy:6,moveT:0,moveMs:210,dir:2,
+const player={x:6,y:6,fx:6,fy:6,moveT:0,moveMs:280,dir:2,
   hp:150,maxhp:150,mp:50,maxmp:50,level:1,exp:0,lastAtk:0,
   points:0,bonusAtk:0,bonusDef:0};
 const equip={head:null,body:null,legs:null,feet:null,weapon:null,shield:null};
@@ -977,7 +977,9 @@ function playerDie(){
   setTimeout(()=>el.style.display='none',1800);
   updateUI();
 }
-// Dijkstra em raio limitado (custo 1 reto, 2 diagonal — diagonal só quando compensa):
+// Dijkstra em raio limitado. Custo de busca: 1 reto, 3 diagonal — como 2 passos retos
+// custam 2, o monstro só anda na diagonal quando as rotas retas estão bloqueadas
+// (o tempo real do passo diagonal continua 2x; isso é só preferência de rota):
 // devolve o primeiro passo [dx,dy] do caminho mais barato até ficar adjacente
 // (cheb<=1) ao alvo, ou null se não há caminho dentro do raio.
 function findStep(m,tx,ty){
@@ -999,7 +1001,7 @@ function findStep(m,tx,ty){
         if(nx<ox||ny<oy||nx>=ox+W||ny>=oy+W)continue;
         const diag=dx&&dy;
         if(!canStep(nx,ny)||(diag&&!canDiag(x,y,dx,dy)))continue;
-        const nc=c+(diag?2:1),ni=idx(nx,ny);
+        const nc=c+(diag?3:1),ni=idx(nx,ny);
         if(dist[ni]>=0&&dist[ni]<=nc)continue;
         dist[ni]=nc;
         if(c===0){fstep[ni*2]=dx;fstep[ni*2+1]=dy;}
@@ -1016,9 +1018,9 @@ function stepToward(m,tx,ty){
   // sem caminho no raio (ex.: alvo do outro lado do lago): guloso antigo, encosta no obstáculo
   const dx=Math.sign(tx-m.x),dy=Math.sign(ty-m.y);
   const opts=[];
-  if(dx&&dy)opts.push([dx,dy]);
   if(Math.abs(tx-m.x)>=Math.abs(ty-m.y)){if(dx)opts.push([dx,0]);if(dy)opts.push([0,dy]);}
   else{if(dy)opts.push([0,dy]);if(dx)opts.push([dx,0]);}
+  if(dx&&dy)opts.push([dx,dy]); // diagonal por último: só quando necessário
   if(!dx)opts.push([1,0],[-1,0]);
   if(!dy)opts.push([0,1],[0,-1]);
   for(const[sx,sy]of opts){
@@ -1089,9 +1091,8 @@ function update(){
       let moved=false;
       if(dist<=m.def.aggro&&!pSafe)moved=stepToward(m,player.x,player.y);
       else if(Math.random()<0.35){
-        const[ox,oy]=DIRS8[rnd(0,7)];
-        if(canStep(m.x+ox,m.y+oy)&&(!ox||!oy||canDiag(m.x,m.y,ox,oy))
-           &&cheb({x:m.x+ox,y:m.y+oy},{x:m.sx,y:m.sy})<=4){
+        const[ox,oy]=DIRS8[rnd(0,3)*2]; // vagar só nas ortogonais: diagonal não é necessária
+        if(canStep(m.x+ox,m.y+oy)&&cheb({x:m.x+ox,y:m.y+oy},{x:m.sx,y:m.sy})<=4){
           moveEnt(m,m.x+ox,m.y+oy);moved=true;
         }
       }
