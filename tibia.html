@@ -80,8 +80,9 @@
   <div id="left">
     <canvas id="cv" width="480" height="352"></canvas>
     <div id="log"></div>
-    <div id="help">WASD / Setas: andar &nbsp;·&nbsp; Botão direito: atacar / usar / pegar &nbsp;·&nbsp;
-      TAB: próximo alvo &nbsp;·&nbsp; Arraste itens com o mouse &nbsp;·&nbsp; Clique esquerdo: olhar &nbsp;·&nbsp; Esc: cancelar</div>
+    <div id="help">WASD / Setas: andar (2 teclas ou numpad = diagonal, 3× mais lenta) &nbsp;·&nbsp;
+      Botão direito: atacar / usar / pegar &nbsp;·&nbsp; TAB: próximo alvo &nbsp;·&nbsp;
+      Arraste itens com o mouse &nbsp;·&nbsp; Clique esquerdo: olhar &nbsp;·&nbsp; Esc: cancelar</div>
   </div>
   <div id="side">
     <div class="panel">
@@ -875,9 +876,15 @@ document.addEventListener('contextmenu',e=>{
 });
 
 //==================================================================== teclado
-const DIRS=[[0,-1],[1,0],[0,1],[-1,0]];
-const KEYDIR={KeyW:0,ArrowUp:0,KeyD:1,ArrowRight:1,KeyS:2,ArrowDown:2,KeyA:3,ArrowLeft:3};
-const pressed=[];
+const DIRS8=[[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];
+const KEYVEC={
+  KeyW:[0,-1],ArrowUp:[0,-1],Numpad8:[0,-1],
+  KeyD:[1,0],ArrowRight:[1,0],Numpad6:[1,0],
+  KeyS:[0,1],ArrowDown:[0,1],Numpad2:[0,1],
+  KeyA:[-1,0],ArrowLeft:[-1,0],Numpad4:[-1,0],
+  Numpad7:[-1,-1],Numpad9:[1,-1],Numpad1:[-1,1],Numpad3:[1,1],
+};
+const pressed=[]; // códigos das teclas de movimento, em ordem de pressionamento
 function cycleTarget(){
   if(isPZ(player.x,player.y)){log('Você não pode atacar dentro de uma zona de proteção.','#8ac6ff');return;}
   const cands=monsters.filter(m=>!m.dead&&Math.abs(m.x-player.x)<=7&&Math.abs(m.y-player.y)<=5);
@@ -889,16 +896,14 @@ function cycleTarget(){
 window.addEventListener('keydown',e=>{
   if(paused)return;
   if(e.code==='Tab'){e.preventDefault();cycleTarget();return;}
-  const d=KEYDIR[e.code];
-  if(d!==undefined){e.preventDefault();if(!pressed.includes(d))pressed.push(d);}
+  if(KEYVEC[e.code]){e.preventDefault();if(!pressed.includes(e.code))pressed.push(e.code);}
   if(e.code==='Escape'){
     if(npcOpen)closeNpc();
     else if(target){target=null;log('Ataque cancelado.');}
   }
 });
 window.addEventListener('keyup',e=>{
-  const d=KEYDIR[e.code];
-  if(d!==undefined){const i=pressed.indexOf(d);if(i>=0)pressed.splice(i,1);}
+  const i=pressed.indexOf(e.code);if(i>=0)pressed.splice(i,1);
 });
 window.addEventListener('blur',()=>{pressed.length=0;});
 
@@ -910,9 +915,14 @@ function monsterAt(x,y){
 function canStep(x,y){ // passo de monstro: nunca entra em zona de proteção
   return walkable(x,y)&&!isPZ(x,y)&&!npcAt(x,y)&&!monsterAt(x,y)&&!(player.x===x&&player.y===y);
 }
-function moveEnt(e,nx,ny){e.fx=e.x;e.fy=e.y;e.x=nx;e.y=ny;e.moveT=NOW;}
+// diagonal não corta quinas: os dois ortogonais do canto precisam ser terreno livre
+const canDiag=(x,y,dx,dy)=>walkable(x+dx,y)&&walkable(x,y+dy);
+function moveEnt(e,nx,ny){
+  e.stepMs=e.moveMs*(nx!==e.x&&ny!==e.y?3:1); // diagonal custa 3x, como no Tibia
+  e.fx=e.x;e.fy=e.y;e.x=nx;e.y=ny;e.moveT=NOW;
+}
 function rpos(e){
-  const t=Math.min(1,(NOW-e.moveT)/e.moveMs);
+  const t=Math.min(1,(NOW-e.moveT)/(e.stepMs||e.moveMs));
   return {x:(e.fx+(e.x-e.fx)*t)*TILE,y:(e.fy+(e.y-e.fy)*t)*TILE};
 }
 function hitMonster(m){
@@ -967,25 +977,74 @@ function playerDie(){
   setTimeout(()=>el.style.display='none',1800);
   updateUI();
 }
+// Dijkstra em raio limitado (custo 1 reto, 3 diagonal — diagonal só quando compensa):
+// devolve o primeiro passo [dx,dy] do caminho mais barato até ficar adjacente
+// (cheb<=1) ao alvo, ou null se não há caminho dentro do raio.
+function findStep(m,tx,ty){
+  const R=m.def.aggro+4,W=2*R+1,ox=m.x-R,oy=m.y-R;
+  const idx=(x,y)=>(y-oy)*W+(x-ox);
+  const dist=new Int16Array(W*W).fill(-1);
+  const fstep=new Int8Array(W*W*2); // primeiro passo do caminho até cada célula
+  const buckets=[[[m.x,m.y]]];      // fila de baldes indexada pelo custo
+  dist[idx(m.x,m.y)]=0;
+  for(let c=0;c<buckets.length;c++){
+    if(!buckets[c])continue;
+    for(const [x,y] of buckets[c]){
+      const i=idx(x,y);
+      if(dist[i]!==c)continue; // entrada obsoleta (célula já alcançada mais barato)
+      if(Math.max(Math.abs(x-tx),Math.abs(y-ty))<=1)
+        return c===0?null:[fstep[i*2],fstep[i*2+1]];
+      for(const [dx,dy] of DIRS8){
+        const nx=x+dx,ny=y+dy;
+        if(nx<ox||ny<oy||nx>=ox+W||ny>=oy+W)continue;
+        const diag=dx&&dy;
+        if(!canStep(nx,ny)||(diag&&!canDiag(x,y,dx,dy)))continue;
+        const nc=c+(diag?3:1),ni=idx(nx,ny);
+        if(dist[ni]>=0&&dist[ni]<=nc)continue;
+        dist[ni]=nc;
+        if(c===0){fstep[ni*2]=dx;fstep[ni*2+1]=dy;}
+        else{fstep[ni*2]=fstep[i*2];fstep[ni*2+1]=fstep[i*2+1];}
+        (buckets[nc]||(buckets[nc]=[])).push([nx,ny]);
+      }
+    }
+  }
+  return null;
+}
 function stepToward(m,tx,ty){
+  const s=findStep(m,tx,ty);
+  if(s){moveEnt(m,m.x+s[0],m.y+s[1]);return true;}
+  // sem caminho no raio (ex.: alvo do outro lado do lago): guloso antigo, encosta no obstáculo
   const dx=Math.sign(tx-m.x),dy=Math.sign(ty-m.y);
   const opts=[];
+  if(dx&&dy)opts.push([dx,dy]);
   if(Math.abs(tx-m.x)>=Math.abs(ty-m.y)){if(dx)opts.push([dx,0]);if(dy)opts.push([0,dy]);}
   else{if(dy)opts.push([0,dy]);if(dx)opts.push([dx,0]);}
   if(!dx)opts.push([1,0],[-1,0]);
   if(!dy)opts.push([0,1],[0,-1]);
-  for(const[ox,oy]of opts){
-    if(canStep(m.x+ox,m.y+oy)){moveEnt(m,m.x+ox,m.y+oy);return;}
+  for(const[sx,sy]of opts){
+    if(canStep(m.x+sx,m.y+sy)&&(!sx||!sy||canDiag(m.x,m.y,sx,sy))){
+      moveEnt(m,m.x+sx,m.y+sy);return true;
+    }
   }
+  return false;
 }
 let lastRegen=0,inPZ=isPZ(player.x,player.y);
 function update(){
-  // movimento do jogador
-  if(pressed.length&&NOW-player.moveT>=player.moveMs){
-    const d=pressed[pressed.length-1];
-    player.dir=d;
-    const nx=player.x+DIRS[d][0],ny=player.y+DIRS[d][1];
-    if(walkable(nx,ny)&&!npcAt(nx,ny)&&!monsterAt(nx,ny))moveEnt(player,nx,ny);
+  // movimento do jogador (8 direções; última tecla pressionada vence por eixo)
+  if(pressed.length&&NOW-player.moveT>=(player.stepMs||player.moveMs)){
+    let dx=0,dy=0;
+    for(const c of pressed){const v=KEYVEC[c];if(v[0])dx=v[0];if(v[1])dy=v[1];}
+    if(dx||dy){
+      player.dir=dx?(dx>0?1:3):(dy>0?2:0);
+      const go=(mx,my)=>{
+        if(!mx&&!my)return false;
+        const nx=player.x+mx,ny=player.y+my;
+        if(!walkable(nx,ny)||npcAt(nx,ny)||monsterAt(nx,ny))return false;
+        if(mx&&my&&!canDiag(player.x,player.y,mx,my))return false;
+        moveEnt(player,nx,ny);return true;
+      };
+      go(dx,dy)||go(dx,0)||go(0,dy); // diagonal bloqueada desliza por um dos eixos
+    }
   }
   // aviso ao entrar/sair da zona de proteção
   const pSafe=isPZ(player.x,player.y);
@@ -1027,13 +1086,17 @@ function update(){
     if(dist<=1&&!pSafe){
       if(NOW-m.lastAtk>=m.def.atkMs)hitPlayer(m);
     }else if(NOW>=m.nextThink){
-      m.nextThink=NOW+m.moveMs+Math.random()*120;
-      if(dist<=m.def.aggro&&!pSafe)stepToward(m,player.x,player.y);
+      let moved=false;
+      if(dist<=m.def.aggro&&!pSafe)moved=stepToward(m,player.x,player.y);
       else if(Math.random()<0.35){
-        const[ox,oy]=DIRS[rnd(0,3)];
-        if(canStep(m.x+ox,m.y+oy)&&cheb({x:m.x+ox,y:m.y+oy},{x:m.sx,y:m.sy})<=4)
-          moveEnt(m,m.x+ox,m.y+oy);
+        const[ox,oy]=DIRS8[rnd(0,7)];
+        if(canStep(m.x+ox,m.y+oy)&&(!ox||!oy||canDiag(m.x,m.y,ox,oy))
+           &&cheb({x:m.x+ox,y:m.y+oy},{x:m.sx,y:m.sy})<=4){
+          moveEnt(m,m.x+ox,m.y+oy);moved=true;
+        }
       }
+      // passo diagonal também custa 3x para o monstro
+      m.nextThink=NOW+(moved?m.stepMs:m.moveMs)+Math.random()*120;
     }
   }
 }
