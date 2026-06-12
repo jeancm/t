@@ -80,7 +80,7 @@
   <div id="left">
     <canvas id="cv" width="480" height="352"></canvas>
     <div id="log"></div>
-    <div id="help">WASD / Setas: andar (2 teclas ou numpad = diagonal, 3× mais lenta) &nbsp;·&nbsp;
+    <div id="help">WASD / Setas: andar (2 teclas ou numpad = diagonal, 2× mais lenta) &nbsp;·&nbsp;
       Botão direito: atacar / usar / pegar &nbsp;·&nbsp; TAB: próximo alvo &nbsp;·&nbsp;
       Arraste itens com o mouse &nbsp;·&nbsp; Clique esquerdo: olhar &nbsp;·&nbsp; Esc: cancelar</div>
   </div>
@@ -918,7 +918,7 @@ function canStep(x,y){ // passo de monstro: nunca entra em zona de proteção
 // diagonal não corta quinas: os dois ortogonais do canto precisam ser terreno livre
 const canDiag=(x,y,dx,dy)=>walkable(x+dx,y)&&walkable(x,y+dy);
 function moveEnt(e,nx,ny){
-  e.stepMs=e.moveMs*(nx!==e.x&&ny!==e.y?3:1); // diagonal custa 3x, como no Tibia
+  e.stepMs=e.moveMs*(nx!==e.x&&ny!==e.y?2:1); // diagonal custa 2x
   e.fx=e.x;e.fy=e.y;e.x=nx;e.y=ny;e.moveT=NOW;
 }
 function rpos(e){
@@ -977,7 +977,7 @@ function playerDie(){
   setTimeout(()=>el.style.display='none',1800);
   updateUI();
 }
-// Dijkstra em raio limitado (custo 1 reto, 3 diagonal — diagonal só quando compensa):
+// Dijkstra em raio limitado (custo 1 reto, 2 diagonal — diagonal só quando compensa):
 // devolve o primeiro passo [dx,dy] do caminho mais barato até ficar adjacente
 // (cheb<=1) ao alvo, ou null se não há caminho dentro do raio.
 function findStep(m,tx,ty){
@@ -999,7 +999,7 @@ function findStep(m,tx,ty){
         if(nx<ox||ny<oy||nx>=ox+W||ny>=oy+W)continue;
         const diag=dx&&dy;
         if(!canStep(nx,ny)||(diag&&!canDiag(x,y,dx,dy)))continue;
-        const nc=c+(diag?3:1),ni=idx(nx,ny);
+        const nc=c+(diag?2:1),ni=idx(nx,ny);
         if(dist[ni]>=0&&dist[ni]<=nc)continue;
         dist[ni]=nc;
         if(c===0){fstep[ni*2]=dx;fstep[ni*2+1]=dy;}
@@ -1095,7 +1095,7 @@ function update(){
           moveEnt(m,m.x+ox,m.y+oy);moved=true;
         }
       }
-      // passo diagonal também custa 3x para o monstro
+      // passo diagonal também custa 2x para o monstro
       m.nextThink=NOW+(moved?m.stepMs:m.moveMs)+Math.random()*120;
     }
   }
