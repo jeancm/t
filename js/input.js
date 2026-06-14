@@ -203,6 +203,7 @@ window.addEventListener('keydown', e => {
   if (paused) return;
   if (e.code === 'Tab') { e.preventDefault(); cycleTarget(); return; }
   if (e.code === 'Digit1') { e.preventDefault(); castExura(); return; }   // magia de cura
+  if (e.code === 'Digit2') { e.preventDefault(); castExori(); return; }   // magia de ataque
   if (KEYVEC[e.code]) { e.preventDefault(); if (!pressed.includes(e.code)) pressed.push(e.code); }
   if (e.code === 'Escape') {
     if (npcOpen) closeNpc();

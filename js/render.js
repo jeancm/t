@@ -88,6 +88,17 @@ function draw() {
     g.globalAlpha = 1;
   }
 
+  // efeito da Exori: anel laranja que se expande pelas casas ao redor
+  for (const f of fx) {
+    if (f.kind !== 'exori') continue;
+    const t = (NOW - f.t0) / 500;
+    if (t >= 1) continue;
+    g.globalAlpha = 0.6 * (1 - t);
+    g.strokeStyle = '#ff7a3a'; g.lineWidth = 3;
+    g.beginPath(); g.arc(f.wx - camX + 16, f.wy - camY + 16, 8 + 38 * t, 0, 7); g.stroke();
+    g.globalAlpha = 1;
+  }
+
   // criaturas, ordenadas por Y para o mais "ao sul" aparecer na frente
   const ents = [player, ...npcs, ...monsters.filter(m => !m.dead)];
   ents.sort((a, b) => rpos(a).y - rpos(b).y);

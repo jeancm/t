@@ -102,6 +102,30 @@ function castExura() {
   updateUI();
 }
 
+// Exori (Berserk): ataque giratório que acerta todos os monstros nas 8 casas ao redor.
+// Recarga própria (lastCastAtk), independente da cura. Bloqueada em zona de proteção.
+function castExori() {
+  const COST = 30, CD = 1500;
+  if (isPZ(player.x, player.y)) { log('Você não pode atacar dentro de uma zona de proteção.', '#8ac6ff'); return; }
+  if (NOW - player.lastCastAtk < CD) return;   // exausto: silencioso
+  if (player.mp < COST) { player.lastCastAtk = NOW; log('Mana insuficiente para Exori.', '#9aa0ff'); return; }
+  player.lastCastAtk = NOW;
+  player.mp -= COST;
+  fx.push({kind: 'exori', wx: player.x * TILE, wy: player.y * TILE, t0: NOW});
+  let hits = 0;
+  for (const m of monsters) {
+    if (m.dead || cheb(player, m) > 1) continue;
+    const dmg = rollDmg(playerAtk(), m.defV);
+    const p = rpos(m);
+    if (dmg <= 0) { floatText(p.x, p.y, 'errou', '#aaa'); continue; }
+    splat(p.x, p.y); floatText(p.x, p.y, '-' + dmg, '#ff5a5a');
+    m.hp -= dmg; hits++;
+    if (m.hp <= 0) killMonster(m);
+  }
+  log(hits ? `Você conjura Exori e atinge ${hits} inimigo${hits > 1 ? 's' : ''}!` : 'Você conjura Exori, mas não acerta ninguém.', '#ffb04a');
+  updateUI();
+}
+
 // Dijkstra em raio limitado, com os custos de rota do Tibia (TFS): 10 reto, 25 diagonal.
 // Dois passos retos (20) ganham de uma diagonal (25), então o monstro anda quase sempre
 // reto e só corta na diagonal quando isso poupa um desvio de 3+ passos ou as rotas retas

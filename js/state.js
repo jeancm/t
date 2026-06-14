@@ -6,7 +6,7 @@
 const player = {
   x: 6, y: 6, fx: 6, fy: 6, moveT: 0, moveMs: 280, dir: 2,
   hp: 150, maxhp: 150, mp: 50, maxmp: 50,
-  level: 1, exp: 0, lastAtk: 0, lastCast: 0,
+  level: 1, exp: 0, lastAtk: 0, lastCast: 0, lastCastAtk: 0,
   points: 0, bonusAtk: 0, bonusDef: 0,
 };
 
