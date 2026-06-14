@@ -12,9 +12,6 @@ function canStep(x, y) {
          !(player.x === x && player.y === y);
 }
 
-// diagonal não corta quinas: os dois ortogonais do canto precisam ser terreno livre
-const canDiag = (x, y, dx, dy) => walkable(x + dx, y) && walkable(x, y + dy);
-
 // move a entidade `e` para (nx,ny), guardando o tile de origem para animar o passo
 function moveEnt(e, nx, ny) {
   e.stepMs = e.moveMs * (nx !== e.x && ny !== e.y ? 2 : 1);   // diagonal leva o dobro do tempo
@@ -114,7 +111,8 @@ function findStep(m, tx, ty) {
         const nx = x + dx, ny = y + dy;
         if (nx < ox || ny < oy || nx >= ox + W || ny >= oy + W) continue;
         const diag = dx && dy;
-        if (!canStep(nx, ny) || (diag && !canDiag(x, y, dx, dy))) continue;
+        // como no Tibia, a diagonal vale se o destino é livre; o custo 25 (vs 10) já desfavorece
+        if (!canStep(nx, ny)) continue;
         const nc = c + (diag ? 25 : 10), ni = idx(nx, ny);
         if (dist[ni] >= 0 && dist[ni] <= nc) continue;
         dist[ni] = nc;
@@ -155,7 +153,7 @@ function stepToward(m, tx, ty) {
   if (!dx) opts.push([1, 0], [-1, 0]);
   if (!dy) opts.push([0, 1], [0, -1]);
   for (const [sx, sy] of opts) {
-    if (canStep(m.x + sx, m.y + sy) && (!sx || !sy || canDiag(m.x, m.y, sx, sy))) {
+    if (canStep(m.x + sx, m.y + sy)) {
       moveEnt(m, m.x + sx, m.y + sy);
       return true;
     }
@@ -177,8 +175,7 @@ function update() {
         if (!mx && !my) return false;
         const nx = player.x + mx, ny = player.y + my;
         if (!walkable(nx, ny) || npcAt(nx, ny) || monsterAt(nx, ny)) return false;
-        if (mx && my && !canDiag(player.x, player.y, mx, my)) return false;
-        moveEnt(player, nx, ny);
+        moveEnt(player, nx, ny);   // diagonal permitida se o destino está livre (estilo Tibia)
         return true;
       };
       go(dx, dy) || go(dx, 0) || go(0, dy);   // diagonal bloqueada desliza por um dos eixos
