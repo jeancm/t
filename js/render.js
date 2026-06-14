@@ -28,6 +28,9 @@ function drawBarName(px, py, name, pct) {
 
 // desenha um frame inteiro: terreno, itens, alvo, efeitos e criaturas
 function draw() {
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, cv.width, cv.height);   // limpa o frame (fundo preto além do mapa)
+
   // câmera sempre centrada no jogador (sem prender às bordas: além do mapa fica preto)
   const pp = rpos(player);
   camX = pp.x - 7 * TILE;
