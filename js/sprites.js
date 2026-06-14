@@ -1,17 +1,27 @@
 'use strict';
-//==================================================================== sprites
-function spr(draw){
-  const c=document.createElement('canvas');c.width=c.height=32;
-  const ctx=c.getContext('2d');
-  const P=(x,y,w,h,col)=>{ctx.fillStyle=col;ctx.fillRect(x*2,y*2,w*2,h*2);};
-  draw(P,ctx);return c;
+// ===================================================================== sprites
+// Todos os sprites são gerados por código (pixel art em canvas off-screen), então
+// o jogo não depende de nenhum arquivo de imagem externo.
+
+// Cria um sprite 32x32 desenhado off-screen. O callback `draw` recebe:
+//   P(x, y, w, h, color) — pinta um retângulo (coordenadas em unidades de 2px)
+//   ctx                  — o contexto 2D, para texto e detalhes finos
+function spr(draw) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const ctx = c.getContext('2d');
+  const P = (x, y, w, h, color) => { ctx.fillStyle = color; ctx.fillRect(x * 2, y * 2, w * 2, h * 2); };
+  draw(P, ctx);
+  return c;
 }
-function paintGrass(P,v){
-  P(0,0,16,16,'#3e6b34');
-  const dark=v?[[2,3],[9,1],[13,6],[5,9],[11,12],[1,13],[7,14]]:[[4,2],[12,4],[1,7],[8,8],[14,11],[3,12],[10,15]];
-  const lite=v?[[6,1],[1,5],[10,7],[14,3],[4,13],[12,14]]:[[2,1],[8,4],[13,9],[5,6],[11,11],[0,10]];
-  for(const[x,y]of dark)P(x,y,1,1,'#34592b');
-  for(const[x,y]of lite)P(x,y,2,1,'#4b7c3f');
+
+// duas variações de grama (variant 0/1) para quebrar a repetição do tile
+function paintGrass(P, variant) {
+  P(0, 0, 16, 16, '#3e6b34');
+  const dark = variant ? [[2,3],[9,1],[13,6],[5,9],[11,12],[1,13],[7,14]] : [[4,2],[12,4],[1,7],[8,8],[14,11],[3,12],[10,15]];
+  const lite = variant ? [[6,1],[1,5],[10,7],[14,3],[4,13],[12,14]] : [[2,1],[8,4],[13,9],[5,6],[11,11],[0,10]];
+  for (const [x, y] of dark) P(x, y, 1, 1, '#34592b');
+  for (const [x, y] of lite) P(x, y, 2, 1, '#4b7c3f');
 }
 const S={};
 S.grass1=spr(P=>paintGrass(P,0));
@@ -27,10 +37,11 @@ S.wall=spr(P=>{P(0,0,16,16,'#55555e');P(0,0,16,1,'#6c6c76');
   P(5,0,1,3,'#36363e');P(11,0,1,3,'#36363e');P(2,4,1,3,'#36363e');P(8,4,1,3,'#36363e');
   P(14,4,1,3,'#36363e');P(5,8,1,3,'#36363e');P(11,8,1,3,'#36363e');
   P(2,12,1,4,'#36363e');P(8,12,1,4,'#36363e');P(14,12,1,4,'#36363e');});
-function paintWater(P,f){
-  P(0,0,16,16,'#2a5a9a');
-  const w=f?[[1,2,5],[9,4,5],[3,8,6],[10,11,4],[1,13,5]]:[[4,1,5],[11,3,4],[1,6,5],[8,9,6],[4,13,5]];
-  for(const[x,y,len]of w){P(x,y,len,1,'#3f74b4');P(x+1,y+1,2,1,'#22497e');}
+// duas fases de água (variant 0/1), alternadas no tempo para dar a animação
+function paintWater(P, variant) {
+  P(0, 0, 16, 16, '#2a5a9a');
+  const waves = variant ? [[1,2,5],[9,4,5],[3,8,6],[10,11,4],[1,13,5]] : [[4,1,5],[11,3,4],[1,6,5],[8,9,6],[4,13,5]];
+  for (const [x, y, len] of waves) { P(x, y, len, 1, '#3f74b4'); P(x + 1, y + 1, 2, 1, '#22497e'); }
 }
 S.water1=spr(P=>paintWater(P,0));
 S.water2=spr(P=>paintWater(P,1));
@@ -43,21 +54,25 @@ S.rock=spr(P=>{paintGrass(P,1);
   P(4,12,9,2,'#2e2e34');P(4,6,9,7,'#7d7d84');P(5,4,7,3,'#8d8d94');
   P(6,5,3,1,'#a2a2aa');P(10,8,2,2,'#6c6c72');P(5,9,2,1,'#6c6c72');});
 
-function drawHuman(P,dir,o){
-  o=o||{};
-  const skin=o.skin||'#e0b48a',shirt=o.shirt||'#a32f2f',pants=o.pants||'#4a3320',hair=o.hair||'#5d3a1a';
-  P(4,14,8,2,'rgba(0,0,0,0.25)');
-  P(5,11,2,3,pants);P(9,11,2,3,pants);
-  P(5,13,2,1,'#26201a');P(9,13,2,1,'#26201a');
-  P(4,6,8,5,shirt);P(3,6,1,4,shirt);P(12,6,1,4,shirt);
-  P(3,10,1,1,skin);P(12,10,1,1,skin);
-  P(5,1,6,5,skin);
-  P(5,0,6,2,hair);P(4,1,1,2,hair);P(11,1,1,2,hair);
-  const eye=o.eye||'#1a1a2a';
-  if(dir===0){P(5,1,6,4,hair);}
-  else if(dir===1){P(7,3,1,1,eye);P(10,3,1,1,eye);}
-  else if(dir===3){P(5,3,1,1,eye);P(8,3,1,1,eye);}
-  else {P(6,3,1,1,eye);P(9,3,1,1,eye);}
+// Desenha um humanoide 32x32 virado para `dir` (0=cima, 1=direita, 2=baixo, 3=esquerda).
+// `opts` troca as cores (skin, shirt, pants, hair, eye) — reaproveitado por jogador,
+// NPCs, orc e troll.
+function drawHuman(P, dir, opts) {
+  opts = opts || {};
+  const skin = opts.skin || '#e0b48a', shirt = opts.shirt || '#a32f2f',
+        pants = opts.pants || '#4a3320', hair = opts.hair || '#5d3a1a';
+  P(4, 14, 8, 2, 'rgba(0,0,0,0.25)');                    // sombra
+  P(5, 11, 2, 3, pants); P(9, 11, 2, 3, pants);          // pernas
+  P(5, 13, 2, 1, '#26201a'); P(9, 13, 2, 1, '#26201a');  // pés
+  P(4, 6, 8, 5, shirt); P(3, 6, 1, 4, shirt); P(12, 6, 1, 4, shirt); // tronco e braços
+  P(3, 10, 1, 1, skin); P(12, 10, 1, 1, skin);           // mãos
+  P(5, 1, 6, 5, skin);                                   // cabeça
+  P(5, 0, 6, 2, hair); P(4, 1, 1, 2, hair); P(11, 1, 1, 2, hair); // cabelo
+  const eye = opts.eye || '#1a1a2a';
+  if (dir === 0) { P(5, 1, 6, 4, hair); }                // de costas: cabelo cobre o rosto
+  else if (dir === 1) { P(7, 3, 1, 1, eye); P(10, 3, 1, 1, eye); }
+  else if (dir === 3) { P(5, 3, 1, 1, eye); P(8, 3, 1, 1, eye); }
+  else { P(6, 3, 1, 1, eye); P(9, 3, 1, 1, eye); }
 }
 S.player=[0,1,2,3].map(d=>spr(P=>drawHuman(P,d)));
 S.rat=spr(P=>{P(2,12,12,2,'rgba(0,0,0,0.25)');
@@ -89,8 +104,10 @@ S.oracle=spr(P=>{drawHuman(P,2,{skin:'#e8d2c2',shirt:'#cfcfe6',pants:'#a8a8c8',h
   P(12,3,1,9,'#8a6a3a');P(11,2,3,1,'#b89a5a');});                  // cajado
 const MSPR={rat:S.rat,snake:S.snake,orc:S.orc,troll:S.troll};
 
-const ISPR={}, IURL={};
-function isp(id,draw){ISPR[id]=spr(draw);IURL[id]=ISPR[id].toDataURL();}
+const ISPR = {};   // sprite (canvas) de cada item, indexado pela chave do sprite
+const IURL = {};   // o mesmo sprite como data URL (para <img> e background-image)
+// registra o sprite de um item: guarda o canvas e o respectivo data URL
+function isp(id, draw) { ISPR[id] = spr(draw); IURL[id] = ISPR[id].toDataURL(); }
 isp('gold',P=>{P(6,5,5,4,'#e0bb45');P(7,6,1,1,'#f2d878');
   P(4,8,5,4,'#d4af37');P(5,9,1,1,'#f0d96a');P(4,11,5,1,'#9a7d20');
   P(8,9,5,4,'#d4af37');P(9,10,1,1,'#f0d96a');P(8,12,5,1,'#9a7d20');});
@@ -127,17 +144,23 @@ const EQDRAW={
   boots(P,[a,b,c]){P(3,6,3,5,a);P(3,10,4,2,c);P(3,12,4,1,'#26201a');
     P(9,6,3,5,a);P(9,10,4,2,c);P(9,12,4,1,'#26201a');},
 };
-for(const eqid in EQDRAW)for(let t=1;t<=MAXTIER;t++){
-  const key=eqid+'@'+t;
-  ISPR[key]=spr((P,ctx)=>{
-    EQDRAW[eqid](P,TIERCOL[t]);
-    ctx.font='bold 9px Verdana';ctx.textAlign='right';ctx.lineJoin='round';
-    ctx.strokeStyle='#000';ctx.lineWidth=2.5;ctx.strokeText(t,31,31);
-    ctx.fillStyle=t===MAXTIER?'#ffd24a':'#fff';ctx.fillText(t,31,31);
-  });
-  IURL[key]=ISPR[key].toDataURL();
+// Para cada equipamento e cada tier 1..MAXTIER, gera um sprite com a paleta do tier
+// e o número do tier desenhado no canto inferior direito.
+for (const eqid in EQDRAW) {
+  for (let tier = 1; tier <= MAXTIER; tier++) {
+    const key = eqid + '@' + tier;
+    ISPR[key] = spr((P, ctx) => {
+      EQDRAW[eqid](P, TIERCOL[tier]);
+      ctx.font = 'bold 9px Verdana'; ctx.textAlign = 'right'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 2.5; ctx.strokeText(tier, 31, 31);
+      ctx.fillStyle = tier === MAXTIER ? '#ffd24a' : '#fff'; ctx.fillText(tier, 31, 31);
+    });
+    IURL[key] = ISPR[key].toDataURL();
+  }
 }
-const sprKey=it=>IDEFS[it.id].tiered?it.id+'@'+(it.tier||1):it.id;
+
+// chave do sprite de um item: 'id@tier' para equipamentos, apenas 'id' para o resto
+const sprKey = it => IDEFS[it.id].tiered ? it.id + '@' + (it.tier || 1) : it.id;
 isp('hpot2',P=>{P(7,0,2,2,'#8a5a30');P(6,2,4,2,'#b8c8d8');
   P(3,4,10,10,'#b8c8d8');P(4,6,8,7,'#a81828');P(4,5,1,7,'#e8f0f8');});
 isp('mpot2',P=>{P(7,0,2,2,'#8a5a30');P(6,2,4,2,'#b8c8d8');
