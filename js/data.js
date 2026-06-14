@@ -1,6 +1,11 @@
 'use strict';
-//==================================================================== dados
-const IDEFS={
+// ===================================================================== dados
+
+// Definição de cada item do jogo (IDEFS[id]). Campos:
+//   name/plural  texto exibido · g  gênero ('f'/'m') p/ artigo · stack  empilhável
+//   use          'hp'|'mp' (consumível) · power  intensidade da cura/mana
+//   slot         onde equipa · atk/def  atributos base · tiered  tem tiers 1-10
+const IDEFS = {
   gold:  {name:'moeda de ouro', plural:'moedas de ouro', g:'f', stack:true},
   hpot:  {name:'poção de vida', plural:'poções de vida', g:'f', stack:true, use:'hp', power:60},
   mpot:  {name:'poção de mana', plural:'poções de mana', g:'f', stack:true, use:'mp', power:60},
@@ -12,16 +17,22 @@ const IDEFS={
   armor: {name:'armadura', g:'f', slot:'body', def:4, tiered:true},
   legs:  {name:'calças', plural:'calças', g:'f', slot:'legs', def:2, tiered:true},
   boots: {name:'botas', plural:'botas', g:'f', slot:'feet', def:1, tiered:true},
-  hpot2:  {name:'poção de vida grande', plural:'poções de vida grandes', g:'f', stack:true, use:'hp', power:150},
-  mpot2:  {name:'poção de mana grande', plural:'poções de mana grandes', g:'f', stack:true, use:'mp', power:150},
+  hpot2: {name:'poção de vida grande', plural:'poções de vida grandes', g:'f', stack:true, use:'hp', power:150},
+  mpot2: {name:'poção de mana grande', plural:'poções de mana grandes', g:'f', stack:true, use:'mp', power:150},
 };
-const MAXTIER=10;
-const tierMul=t=>Math.pow(2,(t||1)-1); // cada tier dobra os atributos do anterior
-const itemAtk=it=>Math.round(IDEFS[it.id].atk*tierMul(it.tier));
-const itemDef=it=>Math.round((IDEFS[it.id].def||0)*tierMul(it.tier));
+
+const MAXTIER = 10;
+const tierMul = tier => Math.pow(2, (tier || 1) - 1);   // cada tier dobra os atributos do anterior
+const itemAtk = item => Math.round(IDEFS[item.id].atk * tierMul(item.tier));
+const itemDef = item => Math.round((IDEFS[item.id].def || 0) * tierMul(item.tier));
+
 // fusões sem tier (poções): 3x item -> 1x versão maior
-const FUSE={hpot:'hpot2',mpot:'mpot2'};
-const MTYPES={
+const FUSE = {hpot: 'hpot2', mpot: 'mpot2'};
+
+// Tipos de monstro (MTYPES[type]). moveMs = ms por passo · atkMs = ms entre ataques
+// aggro = raio (tiles) em que persegue · loot = lista de tuplas [id, chance, min?, max?]
+//   (min/max só valem para itens empilháveis; para equipamento, o 3º campo é o tier base)
+const MTYPES = {
   rat:  {name:'Rato', g:'m', hp:25, atk:7, def:1, exp:12, moveMs:380, atkMs:1600, aggro:5,
          loot:[['gold',.7,1,4],['meat',.35],['hpot',.08]]},
   snake:{name:'Cobra', g:'f', hp:45, atk:11, def:2, exp:25, moveMs:430, atkMs:1700, aggro:4,
@@ -33,8 +44,17 @@ const MTYPES={
   troll:{name:'Troll', g:'m', hp:90, atk:16, def:5, exp:55, moveMs:560, atkMs:2000, aggro:6,
          loot:[['gold',.8,5,18],['meat',.4],['hpot',.12],['sword',.12,1],['helmet',.1,1],['shield',.08,1]]},
 };
-const SPAWNS=[['rat',14,8],['rat',16,12],['rat',12,14],['rat',9,12],
-  ['snake',23,16],['snake',27,15],['snake',24,25],
-  ['orc',30,5],['orc',33,8],['orc',28,10],
-  ['troll',7,24],['troll',12,25]];
-const TERRAIN_NAME={'.':'grama',',':'terra','s':'piso de pedra','w':'uma parede','T':'uma árvore','R':'uma rocha','~':'água'};
+
+// Pontos de spawn: tuplas [type, x, y] (mesmas posições em todos os mundos).
+const SPAWNS = [
+  ['rat',14,8], ['rat',16,12], ['rat',12,14], ['rat',9,12],
+  ['snake',23,16], ['snake',27,15], ['snake',24,25],
+  ['orc',30,5], ['orc',33,8], ['orc',28,10],
+  ['troll',7,24], ['troll',12,25],
+];
+
+// Nome de cada tipo de terreno (caractere do mapa -> texto do comando "olhar").
+const TERRAIN_NAME = {
+  '.': 'grama', ',': 'terra', 's': 'piso de pedra',
+  'w': 'uma parede', 'T': 'uma árvore', 'R': 'uma rocha', '~': 'água',
+};
