@@ -87,6 +87,21 @@ function playerDie() {
   updateUI();
 }
 
+// Exura: magia de cura leve (gasta mana, com recarga). A cura escala com o level.
+function castExura() {
+  const COST = 20, CD = 1000;
+  if (NOW - player.lastCast < CD) return;   // exausto: silencioso (o key-repeat não spamma)
+  if (player.mp < COST) { player.lastCast = NOW; log('Mana insuficiente para Exura.', '#9aa0ff'); return; }
+  player.lastCast = NOW;
+  player.mp -= COST;
+  const heal = Math.round((30 + player.level * 6) * (0.85 + Math.random() * 0.3));
+  player.hp = Math.min(player.maxhp, player.hp + heal);
+  log('Você conjura Exura e recupera ' + heal + ' de vida.', '#7ad87a');
+  floatText(player.x * TILE, player.y * TILE, '+' + heal, '#5ad85a');
+  fx.push({kind: 'heal', wx: player.x * TILE, wy: player.y * TILE, t0: NOW});
+  updateUI();
+}
+
 // Dijkstra em raio limitado, com os custos de rota do Tibia (TFS): 10 reto, 25 diagonal.
 // Dois passos retos (20) ganham de uma diagonal (25), então o monstro anda quase sempre
 // reto e só corta na diagonal quando isso poupa um desvio de 3+ passos ou as rotas retas

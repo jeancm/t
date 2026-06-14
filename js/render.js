@@ -77,6 +77,17 @@ function draw() {
     g.globalAlpha = 1;
   }
 
+  // efeito da cura (Exura): anel verde que cresce e some
+  for (const f of fx) {
+    if (f.kind !== 'heal') continue;
+    const t = (NOW - f.t0) / 500;
+    if (t >= 1) continue;
+    g.globalAlpha = 0.7 * (1 - t);
+    g.strokeStyle = '#7ef07e'; g.lineWidth = 2;
+    g.beginPath(); g.arc(f.wx - camX + 16, f.wy - camY + 16, 4 + 16 * t, 0, 7); g.stroke();
+    g.globalAlpha = 1;
+  }
+
   // criaturas, ordenadas por Y para o mais "ao sul" aparecer na frente
   const ents = [player, ...npcs, ...monsters.filter(m => !m.dead)];
   ents.sort((a, b) => rpos(a).y - rpos(b).y);
@@ -102,7 +113,7 @@ function draw() {
   // textos flutuantes de dano/xp (sobem e desaparecem); também expira os efeitos
   for (let i = fx.length - 1; i >= 0; i--) {
     const f = fx[i];
-    const dur = f.kind === 'splat' ? 500 : 950;
+    const dur = f.kind === 'text' ? 950 : 500;   // texto sobe por 950ms; splat e heal somem em 500ms
     const t = (NOW - f.t0) / dur;
     if (t >= 1) { fx.splice(i, 1); continue; }
     if (f.kind !== 'text') continue;
