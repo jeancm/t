@@ -46,11 +46,13 @@ const MTYPES = {
 };
 
 // Pontos de spawn: tuplas [type, x, y] (mesmas posições em todos os mundos).
+// Dispostos em anéis de dificuldade a partir do templo (6,6): quanto mais forte o
+// monstro, mais longe ele fica (gradiente noroeste -> sudeste).
 const SPAWNS = [
-  ['rat',14,8], ['rat',16,12], ['rat',12,14], ['rat',9,12],
-  ['snake',23,16], ['snake',27,15], ['snake',24,25],
-  ['orc',30,5], ['orc',33,8], ['orc',28,10],
-  ['troll',7,24], ['troll',12,25],
+  ['rat',11,7], ['rat',15,9], ['rat',10,13], ['rat',14,12],     // ~5-9   perto, grama a leste
+  ['snake',21,15], ['snake',23,13], ['snake',19,18],            // ~13-17 beira NO/O do lago
+  ['troll',14,25], ['troll',18,26], ['troll',21,27],            // ~19-21 rochas sul-central
+  ['orc',31,28], ['orc',34,27], ['orc',37,25],                  // ~25-31 covil no extremo SE
 ];
 
 // Nome de cada tipo de terreno (caractere do mapa -> texto do comando "olhar").

@@ -26,9 +26,9 @@ function genMap(seed) {
     }
   }
 
-  // aglomerado de rochas (área dos trolls, sudoeste)
-  for (let y = 21; y <= 26; y++)
-    for (let x = 3; x <= 11; x++)
+  // rochas dos trolls (sul-central): badlands a caminho do sudeste
+  for (let y = 23; y <= 28; y++)
+    for (let x = 12; x <= 22; x++)
       if (rng() < .25) map[y][x] = 'R';
 
   // lago (sudeste): tudo dentro de uma elipse centrada em (29, 21) vira água
@@ -38,6 +38,12 @@ function genMap(seed) {
       if (dx * dx + dy * dy < 1) map[y][x] = '~';
     }
   }
+
+  // covil dos orcs (extremo sudeste): terreno rochoso e perigoso.
+  // depois do lago e só sobre grama, para não invadir a água.
+  for (let y = 23; y <= 28; y++)
+    for (let x = 30; x <= 38; x++)
+      if (map[y][x] === '.' && rng() < .28) map[y][x] = 'R';
 
   // templo (spawn do jogador): paredes na borda, piso de pedra dentro
   for (let y = 4; y <= 9; y++)
