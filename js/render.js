@@ -31,10 +31,11 @@ function draw() {
   g.fillStyle = '#000';
   g.fillRect(0, 0, cv.width, cv.height);   // limpa o frame (fundo preto além do mapa)
 
-  // câmera sempre centrada no jogador (sem prender às bordas: além do mapa fica preto)
+  // câmera sempre centrada no jogador (sem prender às bordas: além do mapa fica preto).
+  // arredonda para o pixel inteiro: evita costura sub-pixel (listras) entre os tiles.
   const pp = rpos(player);
-  camX = pp.x - 7 * TILE;
-  camY = pp.y - 5 * TILE;
+  camX = Math.round(pp.x - 7 * TILE);
+  camY = Math.round(pp.y - 5 * TILE);
 
   // só desenha os tiles visíveis (culling pela viewport)
   const x0 = clamp(Math.floor(camX / TILE), 0, MW - 1), x1 = clamp(Math.ceil((camX + cv.width) / TILE), 0, MW);
