@@ -28,10 +28,10 @@ function drawBarName(px, py, name, pct) {
 
 // desenha um frame inteiro: terreno, itens, alvo, efeitos e criaturas
 function draw() {
-  // câmera centrada no jogador, presa às bordas do mapa
+  // câmera sempre centrada no jogador (sem prender às bordas: além do mapa fica preto)
   const pp = rpos(player);
-  camX = clamp(pp.x - 7 * TILE, 0, MW * TILE - cv.width);
-  camY = clamp(pp.y - 5 * TILE, 0, MH * TILE - cv.height);
+  camX = pp.x - 7 * TILE;
+  camY = pp.y - 5 * TILE;
 
   // só desenha os tiles visíveis (culling pela viewport)
   const x0 = clamp(Math.floor(camX / TILE), 0, MW - 1), x1 = clamp(Math.ceil((camX + cv.width) / TILE), 0, MW);
